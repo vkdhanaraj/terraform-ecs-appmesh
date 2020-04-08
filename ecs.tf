@@ -52,6 +52,12 @@ resource "aws_ecs_service" "productpage" {
     container_port   = var.productpage_port
   }
 
+  service_registries{
+    registry_arn = aws_service_discovery_service.productpage.arn
+    port = 9080
+  }
+
+
   depends_on = [aws_alb_listener.front_end, aws_iam_role_policy_attachment.ecs_task_execution_role]
 
 }
