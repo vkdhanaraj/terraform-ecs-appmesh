@@ -37,7 +37,7 @@ resource "aws_appmesh_virtual_service" "details" {
 }
 
 resource "aws_appmesh_virtual_service" "reviews" {
-  name      = "servicea.reviews.local"
+  name      = "reviews.mydomain"
   mesh_name = "${aws_appmesh_mesh.simple.id}"
 
   spec {
@@ -97,12 +97,12 @@ resource "aws_appmesh_virtual_node" "productpage" {
   spec {
     backend {
       virtual_service {
-        virtual_service_name = "details.local"
+        virtual_service_name = "details.mydomain"
       }
     }
     backend {
       virtual_service {
-        virtual_service_name = "reviews.local"   
+        virtual_service_name = "reviews.mydomain"   
       }
     }
 

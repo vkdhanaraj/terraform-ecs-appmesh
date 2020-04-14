@@ -39,12 +39,12 @@ variable "productpage_count" {
 
 variable "productpage_fargate_cpu" {
   description = "Fargate instance CPU units to provision (1 vCPU = 1024 CPU units)"
-  default     = "512"
+  default     = 512
 }
 
 variable "productpage_fargate_memory" {
   description = "Fargate instance memory to provision (in MiB)"
-  default     = "1024"
+  default     = 1024
 }
 
 #Details-------------------------------------------------------------------
@@ -106,6 +106,16 @@ variable "ratings_fargate_memory" {
 variable "reviews_image" {
   description = "Docker image to run in the ECS cluster"
   default     = "docker.io/istio/examples-bookinfo-reviews-v1:1.15.0"
+}
+
+variable "reviews_v2_image" {
+  description = "Docker image to run in the ECS cluster"
+  default     = "docker.io/istio/examples-bookinfo-reviews-v2:1.15.0"
+}
+
+variable "reviews_v3_image" {
+  description = "Docker image to run in the ECS cluster"
+  default     = "docker.io/istio/examples-bookinfo-reviews-v3:1.15.0"
 }
 
 variable "reviews_port" {

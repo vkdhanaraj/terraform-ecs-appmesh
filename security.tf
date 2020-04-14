@@ -7,9 +7,9 @@ resource "aws_security_group" "lb" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    protocol    = "tcp"
-    from_port   = var.productpage_port
-    to_port     = var.productpage_port
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -28,9 +28,9 @@ resource "aws_security_group" "ecs_tasks" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    protocol        = "tcp"
-    from_port       = var.productpage_port
-    to_port         = var.productpage_port
+    protocol        = "-1"
+    from_port       = 0
+    to_port         = 0
     cidr_blocks = ["0.0.0.0/0"]
     #security_groups = [aws_security_group.lb.id]
   }

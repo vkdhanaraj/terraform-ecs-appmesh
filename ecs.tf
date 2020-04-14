@@ -20,6 +20,8 @@ data "template_file" "productpage" {
     productpage_fargate_cpu    = var.productpage_fargate_cpu
     productpage_fargate_memory = var.productpage_fargate_memory
     aws_region     = var.aws_region
+    virtual_node      = "${aws_appmesh_virtual_node.productpage.name}"
+    mesh              = "${aws_appmesh_mesh.simple.name}"
   }
 }
 
@@ -30,7 +32,19 @@ resource "aws_ecs_task_definition" "productpage" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.productpage_fargate_cpu
   memory                   = var.productpage_fargate_memory
-  container_definitions    = data.template_file.productpage.rendered
+  container_definitions    = data.template_file.productpage.rendered 
+
+  proxy_configuration {
+    type           = "APPMESH"
+    container_name = "envoy"
+    properties = {
+      AppPorts         = "9080"
+      EgressIgnoredIPs = "169.254.170.2,169.254.169.254"
+      IgnoredUID       = "1337"
+      ProxyEgressPort  = 15001
+      ProxyIngressPort = 15000
+    }
+  }
 }
 
 resource "aws_ecs_service" "productpage" {
@@ -56,7 +70,6 @@ resource "aws_ecs_service" "productpage" {
     registry_arn = aws_service_discovery_service.productpage.arn
     port = 9080
   }
-
 
   depends_on = [aws_alb_listener.front_end, aws_iam_role_policy_attachment.ecs_task_execution_role]
 
@@ -125,7 +138,7 @@ resource "aws_ecs_service" "details" {
   depends_on = [aws_iam_role_policy_attachment.ecs_task_execution_role]
 }
 
-  resource "aws_service_discovery_service" "details" {
+resource "aws_service_discovery_service" "details" {
   name = "details"
 
   dns_config {
@@ -219,6 +232,8 @@ data "template_file" "reviews" {
     reviews_fargate_cpu    = var.reviews_fargate_cpu
     reviews_fargate_memory = var.reviews_fargate_memory
     aws_region     = var.aws_region
+    virtual_node      = "${aws_appmesh_virtual_node.reviews-v1.name}"
+    mesh              = "${aws_appmesh_mesh.simple.name}"
   }
 }
 
@@ -230,6 +245,18 @@ resource "aws_ecs_task_definition" "reviews" {
   cpu                      = var.reviews_fargate_cpu
   memory                   = var.reviews_fargate_memory
   container_definitions    = data.template_file.reviews.rendered
+
+  proxy_configuration {
+    type           = "APPMESH"
+    container_name = "envoy"
+    properties = {
+      AppPorts         = "9080"
+      EgressIgnoredIPs = "169.254.170.2,169.254.169.254"
+      IgnoredUID       = "1337"
+      ProxyEgressPort  = 15001
+      ProxyIngressPort = 15000
+    }
+  }
 }
 
 resource "aws_ecs_service" "reviews" {
@@ -253,7 +280,7 @@ resource "aws_ecs_service" "reviews" {
   depends_on = [aws_iam_role_policy_attachment.ecs_task_execution_role]
 }
 
-  resource "aws_service_discovery_service" "reviews" {
+resource "aws_service_discovery_service" "reviews" {
   name = "reviews"
 
   dns_config {
