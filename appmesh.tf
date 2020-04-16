@@ -145,12 +145,34 @@ resource "aws_appmesh_virtual_node" "reviews-v1" {
 }
 
 
+resource "aws_appmesh_virtual_node" "reviews-v2" {
+  name      = "reviews-v2"
+  mesh_name = "${aws_appmesh_mesh.simple.id}"
+
+  spec {
+    listener {
+      port_mapping {
+        port     = 9080
+        protocol = "http"
+      }
+    }
+
+    service_discovery {
+      aws_cloud_map {
+        service_name   = "reviews"
+        namespace_name = "${aws_service_discovery_private_dns_namespace.mydomain.name}"
+      }
+    }
+  }
+}
+
+
 resource "aws_appmesh_virtual_node" "details" {
   name      = "details"
   mesh_name = "${aws_appmesh_mesh.simple.id}"
 
   spec {
-    listener {
+    listener {	
       port_mapping {
         port     = 9080
         protocol = "http"

@@ -28,6 +28,7 @@ data "template_file" "productpage" {
 resource "aws_ecs_task_definition" "productpage" {
   family = "productpage"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.productpage_fargate_cpu
@@ -68,7 +69,6 @@ resource "aws_ecs_service" "productpage" {
 
   service_registries{
     registry_arn = aws_service_discovery_service.productpage.arn
-    port = 9080
   }
 
   depends_on = [aws_alb_listener.front_end, aws_iam_role_policy_attachment.ecs_task_execution_role]
@@ -83,11 +83,6 @@ resource "aws_ecs_service" "productpage" {
     dns_records {
       ttl  = 60
       type = "A"
-    }
-
-    dns_records {
-      ttl  = 60
-      type = "SRV"
     }
   }
 
@@ -104,17 +99,32 @@ data "template_file" "details" {
     details_fargate_cpu    = var.details_fargate_cpu
     details_fargate_memory = var.details_fargate_memory
     aws_region     = var.aws_region
+    virtual_node      = "${aws_appmesh_virtual_node.details.name}"
+    mesh              = "${aws_appmesh_mesh.simple.name}"
   }
 }
 
 resource "aws_ecs_task_definition" "details" {
   family = "details-t"
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.details_fargate_cpu
   memory                   = var.details_fargate_memory
   container_definitions    = data.template_file.details.rendered
+ 
+  proxy_configuration {
+    type           = "APPMESH"
+    container_name = "envoy"
+    properties = {
+      AppPorts         = "9080"
+      EgressIgnoredIPs = "169.254.170.2,169.254.169.254"
+      IgnoredUID       = "1337"
+      ProxyEgressPort  = 15001
+      ProxyIngressPort = 15000
+    }
+  }
 }
 
 resource "aws_ecs_service" "details" {
@@ -229,8 +239,6 @@ data "template_file" "reviews" {
   vars = {
     reviews_image      = var.reviews_image
     reviews_port       = var.reviews_port
-    reviews_fargate_cpu    = var.reviews_fargate_cpu
-    reviews_fargate_memory = var.reviews_fargate_memory
     aws_region     = var.aws_region
     virtual_node      = "${aws_appmesh_virtual_node.reviews-v1.name}"
     mesh              = "${aws_appmesh_mesh.simple.name}"
@@ -239,6 +247,7 @@ data "template_file" "reviews" {
 
 resource "aws_ecs_task_definition" "reviews" {
   family = "reviews-t"
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
@@ -246,7 +255,7 @@ resource "aws_ecs_task_definition" "reviews" {
   memory                   = var.reviews_fargate_memory
   container_definitions    = data.template_file.reviews.rendered
 
-  proxy_configuration {
+ proxy_configuration {
     type           = "APPMESH"
     container_name = "envoy"
     properties = {
@@ -299,3 +308,60 @@ resource "aws_service_discovery_service" "reviews" {
 
   }
 
+  #Reviews V2------------------------------------------------------------------
+
+data "template_file" "reviews-v2" {
+  template = file("./terraform/templates/ecs/reviews-v2.json.tpl")
+
+  vars = {
+    image      = var.reviews_v2_image
+    port       = var.reviews_v2_port
+    aws_region     = var.aws_region
+    virtual_node      = "${aws_appmesh_virtual_node.reviews-v2.name}"
+    mesh              = "${aws_appmesh_mesh.simple.name}"
+  }
+} 
+
+resource "aws_ecs_task_definition" "reviews-v2" {
+  family = "reviews-v2-t"
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.reviews_v2_fargate_cpu
+  memory                   = var.reviews_v2_fargate_memory
+  container_definitions    = data.template_file.reviews.rendered
+
+ proxy_configuration {
+    type           = "APPMESH"
+    container_name = "envoy"
+    properties = {
+      AppPorts         = "9080"
+      EgressIgnoredIPs = "169.254.170.2,169.254.169.254"
+      IgnoredUID       = "1337"
+      ProxyEgressPort  = 15001
+      ProxyIngressPort = 15000
+    }
+  }
+}
+
+resource "aws_ecs_service" "reviews-v2" {
+  name            = "reviews-v2"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.reviews-v2.arn
+  desired_count   = var.reviews_v2_count
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    subnets          = aws_subnet.private.*.id
+    assign_public_ip = true
+  }
+
+  service_registries{
+    registry_arn = aws_service_discovery_service.reviews.arn
+    port = 9080
+  }
+
+  depends_on = [aws_iam_role_policy_attachment.ecs_task_execution_role]
+}

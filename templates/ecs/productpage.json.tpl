@@ -2,8 +2,6 @@
   {
     "name": "productpage",
     "image": "${productpage_image}",
-    "cpu": ${productpage_fargate_cpu},
-    "memory": ${productpage_fargate_memory},
     "networkMode": "awsvpc",
     "portMappings": [
       {
@@ -24,16 +22,34 @@
           "name": "REVIEWS_HOSTNAME",
           "value": "reviews.mydomain"
         }
-    ]
+    ],
+    "dependsOn": [
+        {
+          "containerName": "envoy",
+          "condition": "HEALTHY"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/productpage",
+          "awslogs-region": "us-east-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
   },
   {
     "name" : "envoy",
-    "image" : "840364872350.dkr.ecr.us-west-2.amazonaws.com/aws-appmesh-envoy:v1.12.2.1-prod",
+    "image" : "840364872350.dkr.ecr.us-east-2.amazonaws.com/aws-appmesh-envoy:v1.12.1.0-prod",
     "essential" : true,
     "environment" : [
       {
         "name" : "APPMESH_VIRTUAL_NODE_NAME",
         "value" : "mesh/${mesh}/virtualNode/${virtual_node}"
+      },
+      {
+          "name": "ENABLE_ENVOY_XRAY_TRACING",
+          "value": "1"
       }
     ],
     "healthCheck" : {
@@ -48,5 +64,21 @@
       },
      "memory" : 500,
      "user" : "1337"
-  }  
+  },
+  {
+      "name": "xray-daemon",
+      "image": "amazon/aws-xray-daemon",
+      "cpu": 32,
+      "memoryReservation": 256,
+      "portMappings" : [
+          {
+              "containerPort": 2000,
+              "protocol": "udp"
+          },
+          {
+              "containerPort": 2000,
+              "protocol": "tcp"
+          }
+       ]
+    } 
 ]
