@@ -74,7 +74,8 @@ resource "aws_ecs_service" "productpage" {
   depends_on = [aws_alb_listener.front_end, aws_iam_role_policy_attachment.ecs_task_execution_role]
 
 }
-  resource "aws_service_discovery_service" "productpage" {
+
+resource "aws_service_discovery_service" "productpage" {
   name = "productpage"
 
   dns_config {
@@ -84,7 +85,8 @@ resource "aws_ecs_service" "productpage" {
       ttl  = 60
       type = "A"
     }
-  }
+
+    }
 
   }
 
@@ -178,7 +180,8 @@ data "template_file" "ratings" {
     ratings_fargate_cpu    = var.ratings_fargate_cpu
     ratings_fargate_memory = var.ratings_fargate_memory
     aws_region     = var.aws_region
-  }
+    virtual_node      = "${aws_appmesh_virtual_node.ratings.name}"
+    mesh              = "${aws_appmesh_mesh.simple.name}"  }
 }
 
 resource "aws_ecs_task_definition" "ratings" {
@@ -212,7 +215,7 @@ resource "aws_ecs_service" "ratings" {
   depends_on = [aws_iam_role_policy_attachment.ecs_task_execution_role]
 }
 
-  resource "aws_service_discovery_service" "ratings" {
+resource "aws_service_discovery_service" "ratings" {
   name = "ratings"
 
   dns_config {
@@ -308,7 +311,7 @@ resource "aws_service_discovery_service" "reviews" {
 
   }
 
-  #Reviews V2------------------------------------------------------------------
+#Reviews V2------------------------------------------------------------------
 
 data "template_file" "reviews-v2" {
   template = file("./terraform/templates/ecs/reviews-v2.json.tpl")
@@ -330,7 +333,7 @@ resource "aws_ecs_task_definition" "reviews-v2" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = var.reviews_v2_fargate_cpu
   memory                   = var.reviews_v2_fargate_memory
-  container_definitions    = data.template_file.reviews.rendered
+  container_definitions    = data.template_file.reviews-v2.rendered
 
  proxy_configuration {
     type           = "APPMESH"
